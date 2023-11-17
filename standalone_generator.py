@@ -41,14 +41,15 @@ class Generator():
         x = layers.Concatenate()([z_input, condition_input])
         
         # Fully connected layer that takes the combined input
-        x = layers.Dense(256, activation='relu')(x)
+        x = layers.Dense(256, activation='sigmoid')(x)
         x = layers.BatchNormalization()(x)  # Helps to stabilize training
         
         # Up-sampling: Increasing the dimensionality to get to the correct image size
-        x = layers.Dense(512, activation='relu')(x)
+        
+        x = layers.Dense(256, activation='sigmoid')(x)
         x = layers.BatchNormalization()(x)  # Further stabilization of training
         # The final layer has a size of the product of the image dimensions (width * height * channels)
-        x = layers.Dense(np.prod(self.img_shape), activation='tanh')(x)  # 'tanh' activation is common for GANs
+        x = layers.Dense(np.prod(self.img_shape), activation='sigmoid')(x)  # 'tanh' activation is common for GANs
         # Reshape the output to the size of the image
         img = layers.Reshape(self.img_shape)(x)
         
@@ -106,22 +107,27 @@ generator = Generator(z_dim, preprocessed_labels.shape[1], (1024 ,1024, 1))  # A
 
 
 
-iterations = 5
+iterations = 1
 
 # Define the optimizer and loss function for the generator
-generator_optimizer = Adam(learning_rate=0.02)
+generator_optimizer = Adam(learning_rate=0.015)
 mse_loss = MeanSquaredError()
 
 # Compile the generator model
 generator.model.compile(optimizer=generator_optimizer, loss=mse_loss)
 
+# save model
+generator.model.save('generator_model.h5')
+import json
 
 ### TO BE PARALELIZED ###
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-output_dir = 'generated_images'
+output_dir = 'batch_images'
 os.makedirs(output_dir, exist_ok=True)
+
+labels = []
 
 
 
@@ -131,47 +137,79 @@ def loss_func(real_image, synthetic_image):
 counter = 0
 ### TO BE PARALELIZED ###
 # Training loop
-for epoch in range(iterations):
-    for i in range(len(preprocessed_images)):
-        real_image = preprocessed_images[i:i+1]  # Select a single image slice
-        label = preprocessed_labels[i:i+1]       # Select the corresponding label slice
+image_counter = 1
+for i in range(len(preprocessed_images)):
+    real_image = preprocessed_images[i:i+1]  # Select a single image slice
+    label = preprocessed_labels[i:i+1]       # Select the corresponding label slice
 
         # Generate noise
-        noise = np.random.normal(-1, 1, (1, z_dim))
+    noise = np.random.normal(-1, 1, (1, z_dim))
         
         # Generate a synthetic image
-        synthetic_image = generator.model.predict([noise, label])
+    synthetic_image = generator.model.predict([noise, label])
         
         # Scale the synthetic image to match the real image range
-        # if counter mod 10 == 0:
-        synthetic_image = (synthetic_image + 1) / 2
-        
+
         # initialize synthetic image to real image
-        synthetic_image = real_image
 
-        
         # Compute the loss between the synthetic and real image
-        loss = generator.model.train_on_batch([noise, label], real_image)
+    loss = generator.model.train_on_batch([noise, label], real_image)
+    
         
-        if counter % 1 == 0:
-        # save synthetic image and real image to file synth.jpg and real.jpg
-            plt.imsave(os.path.join(output_dir, 'synth.jpg'), synthetic_image.reshape(1024, 1024), cmap='gray')
-            plt.imsave(os.path.join(output_dir, 'real.jpg'), real_image.reshape(1024, 1024), cmap='gray')
-            print(loss_func(real_image, synthetic_image))
-            print(f'Epoch: {epoch}, Loss: {loss}')
-            input('Press Enter to continue...')
+    if counter > 5:
+        img_name = str(i-5*image_counter) + '.jpg'
         
-        # Print the loss
+        # serialize labels to json
+        labels.append({'img_name': img_name, 'label': label.tolist()[0]})
+         
+        plt.imsave(os.path.join(output_dir, img_name), synthetic_image.reshape(1024, 1024), cmap='gray')
+        synth = Image.open(os.path.join(output_dir, img_name))
+        synth = synth.point(lambda p: p * 0.85)
+        synth.save(os.path.join(output_dir, img_name))
         
-        counter += 1
+        done_labels = {'labels': labels}
+        # save done labels to json file with nice indentation
+        with open('done_labels.json', 'w') as f:
+            json.dump(done_labels, f, indent=4)
+            
+        counter = 0
+        image_counter += 1
+        
+        # load empty generator model
+        generator.model = models.load_model('generator_model.h5')
+        
+        
+
+    
+    counter += 1
+            
+        
+            
+            
+            
+
+print("Done!")
 
 
-### END OF PARALELIZED ###
+# load model and generate images from labels
 
-# Display a synthetic image
-plt.imshow(synthetic_image[0].reshape(1024, 1024), cmap='gray')
-plt.axis('off')
-plt.show()
+generator.model = models.load_model('generator_model.h5')
 
+output_dir = 'batch_images'
 
-# save 
+for i in range(len(preprocessed_images)):
+    noise = np.random.normal(-1, 1, (1, z_dim))
+        
+        # Generate a synthetic image
+    synthetic_image = generator.model.predict([noise, label])
+    
+    # generate name for the image
+    img_name = str(i) + '.jpg'
+    
+    # save synth image and decrease brightness to 0.85
+    plt.imsave(os.path.join(output_dir, img_name), synthetic_image.reshape(1024, 1024), cmap='gray')
+    synth = Image.open(os.path.join(output_dir, img_name))
+    synth = synth.point(lambda p: p * 0.85)
+    synth.save(os.path.join(output_dir, img_name))
+    
+    
