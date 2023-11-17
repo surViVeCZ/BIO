@@ -130,6 +130,8 @@ os.makedirs(output_dir, exist_ok=True)
 labels = []
 
 
+print("number of preprocesses images: ", len(preprocessed_images))
+
 
 def loss_func(real_image, synthetic_image):
     return mse_loss(real_image, synthetic_image)
@@ -139,77 +141,56 @@ counter = 0
 # Training loop
 image_counter = 1
 for i in range(len(preprocessed_images)):
-    real_image = preprocessed_images[i:i+1]  # Select a single image slice
-    label = preprocessed_labels[i:i+1]       # Select the corresponding label slice
+    for j in range(5):
+        real_image = preprocessed_images[i:i+1]  # Select a single image slice
+        label = preprocessed_labels[i:i+1]       # Select the corresponding label slice
 
-        # Generate noise
-    noise = np.random.normal(-1, 1, (1, z_dim))
-        
-        # Generate a synthetic image
-    synthetic_image = generator.model.predict([noise, label])
-        
-        # Scale the synthetic image to match the real image range
-
-        # initialize synthetic image to real image
-
-        # Compute the loss between the synthetic and real image
-    loss = generator.model.train_on_batch([noise, label], real_image)
-    
-        
-    if counter > 5:
-        img_name = str(i-5*image_counter) + '.jpg'
-        
-        # serialize labels to json
-        labels.append({'img_name': img_name, 'label': label.tolist()[0]})
-         
-        plt.imsave(os.path.join(output_dir, img_name), synthetic_image.reshape(1024, 1024), cmap='gray')
-        synth = Image.open(os.path.join(output_dir, img_name))
-        synth = synth.point(lambda p: p * 0.85)
-        synth.save(os.path.join(output_dir, img_name))
-        
-        done_labels = {'labels': labels}
-        # save done labels to json file with nice indentation
-        with open('done_labels.json', 'w') as f:
-            json.dump(done_labels, f, indent=4)
+            # Generate noise
+        noise = np.random.normal(-1, 1, (1, z_dim))
             
-        counter = 0
-        image_counter += 1
-        
-        # load empty generator model
-        generator.model = models.load_model('generator_model.h5')
-        
-        
-
-    
-    counter += 1
+            # Generate a synthetic image
+        synthetic_image = generator.model.predict([noise, label])
             
+            # Scale the synthetic image to match the real image range
+
+            # initialize synthetic image to real image
+
+            # Compute the loss between the synthetic and real image
+        loss = generator.model.train_on_batch([noise, label], real_image)
         
             
+        if counter > 5:
+            img_name = str(i) + '.jpg'
+            
+            # serialize labels to json
+            labels.append({'img_name': img_name, 'label': label.tolist()[0]})
+            
+            plt.imsave(os.path.join(output_dir, img_name), synthetic_image.reshape(1024, 1024), cmap='gray')
+            synth = Image.open(os.path.join(output_dir, img_name))
+            synth = synth.point(lambda p: p * 0.85)
+            synth.save(os.path.join(output_dir, img_name))
+            
+            done_labels = {'labels': labels}
+            # save done labels to json file with nice indentation
+            with open('done_labels.json', 'w') as f:
+                json.dump(done_labels, f, indent=4)
+                
+            counter = 0
+            image_counter += 1
+            
+            # load empty generator model
+            generator.model = models.load_model('generator_model.h5')
             
             
 
-print("Done!")
-
-
-# load model and generate images from labels
-
-generator.model = models.load_model('generator_model.h5')
-
-output_dir = 'batch_images'
-
-for i in range(len(preprocessed_images)):
-    noise = np.random.normal(-1, 1, (1, z_dim))
         
-        # Generate a synthetic image
-    synthetic_image = generator.model.predict([noise, label])
-    
-    # generate name for the image
-    img_name = str(i) + '.jpg'
-    
-    # save synth image and decrease brightness to 0.85
-    plt.imsave(os.path.join(output_dir, img_name), synthetic_image.reshape(1024, 1024), cmap='gray')
-    synth = Image.open(os.path.join(output_dir, img_name))
-    synth = synth.point(lambda p: p * 0.85)
-    synth.save(os.path.join(output_dir, img_name))
+        counter += 1
+            
+        
+            
+            
+            
+
+
     
     
