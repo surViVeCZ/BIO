@@ -61,7 +61,7 @@ class Generator():
 
 
 # limit number of images for testing 
-SAMPLE_LIMIT = 1000
+#SAMPLE_LIMIT = 1000
 
 
 with open('preprocessed_images.pickle', 'rb') as f:
@@ -72,8 +72,8 @@ with open('preprocessed_labels.pickle', 'rb') as f:
     
     
 
-preprocessed_images = preprocessed_images[0:SAMPLE_LIMIT]
-preprocessed_labels = preprocessed_labels[0:SAMPLE_LIMIT]
+#preprocessed_images = preprocessed_images[0:SAMPLE_LIMIT]
+#preprocessed_labels = preprocessed_labels[0:SAMPLE_LIMIT]
 
 
 # shuffle images and labels in the same order
